@@ -22,7 +22,7 @@ https://github.com/nimaltd/w25qxx
   W25qxx_Init();
   
   //Read Chip info
-sprintf(string,"MEMORY INFORMATION:\r\n"
+  sprintf(string,"MEMORY INFORMATION:\r\n"
 	 " MEM:\r\n  W25Q%d\r\n"
 	 " JID %d\r\n "
 	 " UID %d\r\n "
