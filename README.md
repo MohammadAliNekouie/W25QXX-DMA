@@ -26,3 +26,8 @@ https://github.com/nimaltd/w25qxx
   
   W25qxx_ReadSector(dataBuffer,1,0,256);
 ```
+
+
+
+
+Thanks to @nimaltd and @zoosmand
