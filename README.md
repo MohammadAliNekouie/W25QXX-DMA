@@ -22,17 +22,17 @@ https://github.com/nimaltd/w25qxx
   W25qxx_Init();
   
   //Read Chip info
-	sprintf(string,"MEMORY INFORMATION:\r\n"
-								 " MEM:\r\n  W25Q%d\r\n"
-								 " JID %d\r\n "
-								 " UID %d\r\n "
-								 " BLC %d\r\n "
-								 " CAP %d\r\n",
-								 (0x01<<(w25qxx.ID-1)),
-								 (int)w25qxx.ManID,
-								 (int)w25qxx.UniqID,
-								  w25qxx.BlockCount,
-								  w25qxx.Capacity);
+sprintf(string,"MEMORY INFORMATION:\r\n"
+	 " MEM:\r\n  W25Q%d\r\n"
+	 " JID %d\r\n "
+	 " UID %d\r\n "
+ 	 " BLC %d\r\n "
+	 " CAP %d\r\n",
+ 	 (0x01<<(w25qxx.ID-1)),
+	 (int)w25qxx.ManID,
+	 (int)w25qxx.UniqID,
+	 w25qxx.BlockCount,
+	 w25qxx.Capacity);
   printf(string);
   
   //Erase
