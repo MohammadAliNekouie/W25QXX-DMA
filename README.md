@@ -6,7 +6,7 @@ https://github.com/zoosmand/Winbond-W25Qxx-EEPROM-SPI-with-DMA-on-STM32
 
 https://github.com/nimaltd/w25qxx
 
-###Before Start:
+### Before Start:
 * Be Sure you Enabled SPI and a Gpio as output(CS pin).Connect WP and HOLD to VCC.
 * Select software CS pin and declear it at `w25qxxConf.h`.
 * Config SPI handel at `w25qxxConf.h`.
