@@ -53,4 +53,4 @@ https://github.com/nimaltd/w25qxx
 
 
 
-Thanks to @nimaltd and @zoosmand
+Thanks to @github.com/nimaltd and @github.com/zoosmand
