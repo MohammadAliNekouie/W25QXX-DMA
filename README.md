@@ -12,3 +12,20 @@ https://github.com/nimaltd/w25qxx
 * In Read/Write Function, you can put 0 to `NumByteToRead/NumByteToWrite` parameter to maximum.
 * Dont forget to erase page/sector/block before write.
 
+
+```
+Test Code:
+
+  Init_SPI_W25Qxx();
+	LL_SPI_Enable(SPI2);
+	W25qxx_Init();
+  W25qxx_EraseSector(1);
+  
+  for(int i=0;i<256;i++)
+	{
+		dataBuffer[i]=127;
+	}	
+  W25qxx_WriteSector(dataBuffer,1,0,256);
+  
+  W25qxx_ReadSector(dataBuffer,1,0,256);
+```
