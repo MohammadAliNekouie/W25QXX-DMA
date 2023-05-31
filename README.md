@@ -1,7 +1,8 @@
-## W25QXX SPI FLASH Library for STM32
-* http://www.github.com/NimaLTD   
-* https://www.instagram.com/github.nimaltd/   
-* https://www.youtube.com/@nimaltd
+## DMA based W25QXX SPI FLASH Library for STM32 Low Layer Libs
+
+This project based on two other below projects:
+https://github.com/zoosmand/Winbond-W25Qxx-EEPROM-SPI-with-DMA-on-STM32
+https://github.com/nimaltd/w25qxx
 
 * Enable SPI and a Gpio as output(CS pin).Connect WP and HOLD to VCC.
 * Select software CS pin.
