@@ -68,7 +68,9 @@ extern "C"
 		uint8_t StatusRegister1;
 		uint8_t StatusRegister2;
 		uint8_t StatusRegister3;
+		uint32_t  ManID;
 		uint8_t Lock;
+		uint32_t  Capacity;
 
 	} w25qxx_t;
 
@@ -77,7 +79,9 @@ extern "C"
 	// in Page,Sector and block read/write functions, can put 0 to read maximum bytes
 	//############################################################################
 	bool W25qxx_Init(void);
-
+	
+	uint8_t Init_SPI_W25Qxx (void);
+	
 	void W25qxx_EraseChip(void);
 	void W25qxx_EraseSector(uint32_t SectorAddr);
 	void W25qxx_EraseBlock(uint32_t BlockAddr);
