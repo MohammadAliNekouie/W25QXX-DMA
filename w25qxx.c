@@ -224,7 +224,7 @@ uint32_t W25qxx_ReadID(void)
 void W25qxx_ReadUniqID(void)
 {
 	W25Qxx_TransferSPI(Read_UniqueID,-1,12,READ,0);
-	memcpy(&w25qxx.UniqID[4],&dataBuffer[5],8);
+	memcpy(&w25qxx.UniqID[0],&dataBuffer[5],8);
 }
 //###################################################################################################################
 void W25qxx_WriteEnable(void)
@@ -294,16 +294,16 @@ bool W25qxx_Init(void)
 		W25qxx_Delay(1);
 	LL_GPIO_SetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
 	W25qxx_Delay(100);
-	uint32_t id;
+
 #if (_W25QXX_DEBUG == 1)
 	printf("w25qxx Init Begin...\r\n");
 #endif
-	id = W25qxx_ReadID();
+	w25qxx.ManID = W25qxx_ReadID();
 
 #if (_W25QXX_DEBUG == 1)
 	printf("w25qxx ID:0x%X\r\n", id);
 #endif
-	switch (id & 0x000000FF)
+	switch (w25qxx.ManID & 0x000000FF)
 	{
 	case 0x20: // 	w25q512
 		w25qxx.ID = W25Q512;
@@ -387,7 +387,8 @@ bool W25qxx_Init(void)
 	w25qxx.SectorCount = w25qxx.BlockCount * 16;
 	w25qxx.PageCount = (w25qxx.SectorCount * w25qxx.SectorSize) / w25qxx.PageSize;
 	w25qxx.BlockSize = w25qxx.SectorSize * 16;
-	w25qxx.CapacityInKiloByte = (w25qxx.SectorCount * w25qxx.SectorSize) / 1024;
+	w25qxx.Capacity = (w25qxx.SectorCount * w25qxx.SectorSize) ;
+	w25qxx.CapacityInKiloByte = w25qxx.Capacity / 1024;
 	W25qxx_ReadUniqID();
 	W25qxx_ReadStatusRegister(1);
 	W25qxx_ReadStatusRegister(2);
