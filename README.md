@@ -16,16 +16,36 @@ https://github.com/nimaltd/w25qxx
 
 ## Test Code:
 ```
+  //Init
   Init_SPI_W25Qxx();
   LL_SPI_Enable(SPI2);
   W25qxx_Init();
+  
+  //Read Chip info
+	sprintf(string,"MEMORY INFORMATION:\r\n"
+								 " MEM:\r\n  W25Q%d\r\n"
+								 " JID %d\r\n "
+								 " UID %d\r\n "
+								 " BLC %d\r\n "
+								 " CAP %d\r\n",
+								 (0x01<<(w25qxx.ID-1)),
+								 (int)w25qxx.ManID,
+								 (int)w25qxx.UniqID,
+								  w25qxx.BlockCount,
+								  w25qxx.Capacity);
+  printf(string);
+  
+  //Erase
   W25qxx_EraseSector(1);
+  
+  //Write 
   for(int i=0;i<256;i++)
   {
     dataBuffer[i]=127;
   }	
   W25qxx_WriteSector(dataBuffer,1,0,256);
   
+  //Read
   W25qxx_ReadSector(dataBuffer,1,0,256);
 ```
 
