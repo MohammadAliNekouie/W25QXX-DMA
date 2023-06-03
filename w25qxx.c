@@ -192,7 +192,7 @@ uint8_t W25Qxx_TransferSPI (uint8_t __command, int32_t __address, uint16_t __byt
     LL_SPI_TransmitData8(SPI_HANDLE, 0);
     while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE));
     LL_SPI_ReceiveData8(SPI_HANDLE);
-    while (LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE));
+    while (!LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE));
   }
   
   if (__bytes)//>1)
