@@ -121,12 +121,16 @@ void W25Qxx_TransferDMASPI (uint32_t __bytes, DataDirectionTypeDef __dir, uint32
   uint8_t pump = 0;
   if (__dir == WRITE)
   {
+		
     LL_DMA_SetMemoryAddress(DMA1, LL_DMA_CHANNEL_5, ((uint32_t)&dataBuffer) + (__offset * 256));
     LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_5, __bytes);
     LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_5);
   }
   else
   {
+		// Send a single dummy byte to start the SPI communication
+		LL_SPI_TransmitData8(SPI_HANDLE, 0x00);
+		
     LL_SPI_EnableDMAReq_RX(SPI_HANDLE);
     LL_DMA_SetMemoryAddress(DMA1, LL_DMA_CHANNEL_5, (uint32_t)&pump);
     LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_5, __bytes);
@@ -164,6 +168,7 @@ void W25Qxx_TransferDMASPI (uint32_t __bytes, DataDirectionTypeDef __dir, uint32
 
 uint8_t W25Qxx_TransferSPI (uint8_t __command, int32_t __address, uint16_t __bytes, DataDirectionTypeDef __dir, uint32_t __offset)
 {
+	static int i = 0;
 	uint8_t first_byte=W25QXX_DUMMY_BYTE;
   LL_GPIO_ResetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
   __NOP;
@@ -177,7 +182,7 @@ uint8_t W25Qxx_TransferSPI (uint8_t __command, int32_t __address, uint16_t __byt
 
   if (__address >= 0)
   {
-    int i = 4;
+    i = 4;
     while (--i)
     {
       LL_SPI_TransmitData8(SPI_HANDLE, __address >> 8 * i);
@@ -189,10 +194,14 @@ uint8_t W25Qxx_TransferSPI (uint8_t __command, int32_t __address, uint16_t __byt
   
   if (__command == FastRead)
   {
+    i = 3;
+    while (--i)
+    {		
     LL_SPI_TransmitData8(SPI_HANDLE, 0);
     while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE));
     LL_SPI_ReceiveData8(SPI_HANDLE);
     while (!LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE));
+		}
   }
   
   if (__bytes)//>1)
