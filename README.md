@@ -45,6 +45,8 @@ https://github.com/nimaltd/w25qxx
     dataBuffer[i]=127;
   }	
   W25qxx_WriteSector(dataBuffer,1,0,256);
+
+  LL_mDelay(10);// Now it's a bug that caused to need a delay here but I'm working on removing it.
   
   //Read
   W25qxx_ReadSector(dataBuffer,1,0,256);
