@@ -12,10 +12,10 @@ const uint16_t PageSize = 0x0100; // 256
 const uint16_t SectorSize = 0x1000; // 4096
 const uint16_t Block32KSize = 0x8000; // 32768
 const uint32_t BlockSize = 0x00010000; // 65536
-#define W25QXX_DUMMY_BYTE 0xA5
-uint8_t dataBuffer[SectorSize];
-uint16_t cnt;
 
+#define W25QXX_DUMMY_BYTE 0xA5
+extern uint8_t dataBuffer[SectorSize];
+uint16_t cnt;
 w25qxx_t w25qxx;
 #if (_W25QXX_USE_FREERTOS == 1)
 #define W25qxx_Delay(delay) osDelay(delay)
@@ -69,7 +69,7 @@ uint8_t Init_SPI_W25Qxx(void)
   spi.ClockPolarity = LL_SPI_POLARITY_LOW;
   spi.ClockPhase = LL_SPI_PHASE_1EDGE;
   spi.NSS = LL_SPI_NSS_SOFT;
-  spi.BaudRate = LL_SPI_BAUDRATEPRESCALER_DIV32 ;
+  spi.BaudRate = LL_SPI_BAUDRATEPRESCALER_DIV16 ;
   spi.BitOrder = LL_SPI_MSB_FIRST;
   spi.CRCCalculation = LL_SPI_CRCCALCULATION_DISABLE;
 	
@@ -114,8 +114,9 @@ uint8_t Init_SPI_W25Qxx(void)
 
 
 // -------------------------------------------------------------  
-void W25Qxx_TransferDMASPI (uint32_t __bytes, DataDirectionTypeDef __dir, uint32_t __offset){
+int W25Qxx_TransferDMASPI (uint32_t __bytes, DataDirectionTypeDef __dir, uint32_t __offset,uint8_t __command){
 	
+	static uint16_t timeout=0;
   LL_SPI_EnableDMAReq_TX(SPI_HANDLE);
  
   uint8_t pump = 0;
@@ -129,7 +130,11 @@ void W25Qxx_TransferDMASPI (uint32_t __bytes, DataDirectionTypeDef __dir, uint32
   else
   {
 		// Send a single dummy byte to start the SPI communication
-		LL_SPI_TransmitData8(SPI_HANDLE, 0x00);
+		if(__command == Read_UniqueID || __command == Read_JedecID)
+		{
+			LL_SPI_TransmitData8(SPI_HANDLE, 0x00);
+		}
+
 		
     LL_SPI_EnableDMAReq_RX(SPI_HANDLE);
     LL_DMA_SetMemoryAddress(DMA1, LL_DMA_CHANNEL_5, (uint32_t)&pump);
@@ -140,55 +145,116 @@ void W25Qxx_TransferDMASPI (uint32_t __bytes, DataDirectionTypeDef __dir, uint32
     LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_4);
   }
 
-  while (!LL_DMA_IsActiveFlag_TC5(DMA1));
+	timeout = 0;
+  while (!LL_DMA_IsActiveFlag_TC5(DMA1))
+	{
+		timeout++;
+		if(timeout>=SPI_TIMEOUT){return -1;}
+	}
+	
   LL_DMA_ClearFlag_TC5(DMA1);
   // Wait for DMA transfer to complete
-  while (!LL_DMA_IsEnabledChannel(DMA1, LL_DMA_CHANNEL_5));	
+	timeout = 0;
+  while (!LL_DMA_IsEnabledChannel(DMA1, LL_DMA_CHANNEL_5))
+	{
+		timeout++;
+		if(timeout>=SPI_TIMEOUT){return -1;}
+	}
 	//we have to wait for DMA to stop so Disable SPI2 TX DMA request
 	LL_SPI_DisableDMAReq_TX(SPI_HANDLE);
 	// Wait for any ongoing SPI transmissions to complete
-  while (LL_SPI_IsActiveFlag_TXE(SPI_HANDLE) == RESET || LL_SPI_IsActiveFlag_BSY(SPI_HANDLE) == SET);
+	timeout = 0;
+  while (LL_SPI_IsActiveFlag_TXE(SPI_HANDLE) == RESET || LL_SPI_IsActiveFlag_BSY(SPI_HANDLE) == SET)
+	{
+		timeout++;
+		if(timeout>=SPI_TIMEOUT){return -1;}
+	}
 	
   if (__dir == WRITE)
   {
-    while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE));
+		timeout = 0;
+    while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE))
+		{
+			timeout++;
+			if(timeout>=SPI_TIMEOUT){return -1;}
+		}
     LL_SPI_DisableDMAReq_TX(SPI_HANDLE);
     LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_5);
   }
   else
   {
-    while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE));
-    while (!LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE));
+		timeout = 0;
+    while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE))
+		{
+			timeout++;
+			if(timeout>=SPI_TIMEOUT){return -1;}
+		}			
+		
+		timeout = 0;
+    while (!LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE))
+		{
+			timeout++;
+			if(timeout>=SPI_TIMEOUT){return -1;}
+		}
     LL_SPI_DisableDMAReq_TX(SPI_HANDLE);
     LL_SPI_DisableDMAReq_RX(SPI_HANDLE);
     LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_5);
     LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_4);
   }
+	return 0;
 }
 
-uint8_t W25Qxx_TransferSPI (uint8_t __command, int32_t __address, uint16_t __bytes, DataDirectionTypeDef __dir, uint32_t __offset)
+int SPI_TRANSFER(uint8_t __command,uint8_t *__result)
 {
-	static int i = 0;
-	uint8_t first_byte=W25QXX_DUMMY_BYTE;
-  LL_GPIO_ResetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
-  __NOP;
-	__NOP;
-	__NOP;
-	__NOP;
-  LL_SPI_TransmitData8(SPI_HANDLE, __command);
-  while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE));
-  first_byte=LL_SPI_ReceiveData8(SPI_HANDLE);
-  while (!LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE));
+	static uint16_t timeout=0;
+	
+	LL_SPI_TransmitData8(SPI_HANDLE, __command);
+	while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE))
+	{
+		timeout++;
+		if(timeout>=SPI_TIMEOUT){return -1;}
+	}
+	
+	
+	*__result = LL_SPI_ReceiveData8(SPI_HANDLE);
+	timeout = 0;
+  while (!LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE))
+	{
+		timeout++;
+		if(timeout>=SPI_TIMEOUT){return -1;}
+	}
+	
+	
+	*__result = LL_SPI_ReceiveData8(SPI_HANDLE);
+	W25qxx_Delay(4); // a delay added to wait before finish the transmission and then chenge the CS state
+	return 0;
+}
 
+int W25Qxx_TransferSPI (uint8_t __command, int32_t __address, uint16_t __bytes, DataDirectionTypeDef __dir, uint32_t __offset)
+{
+	static int i , result = 0;
+	uint8_t SPI_RESPONCE = 0;
+	
+  LL_GPIO_ResetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
+	
+	result = SPI_TRANSFER(__command,&SPI_RESPONCE);
+	if(result == -1)
+	{
+		LL_GPIO_SetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
+		return -1;//Timeout Error
+	}
+	
   if (__address >= 0)
   {
     i = 4;
     while (--i)
     {
-      LL_SPI_TransmitData8(SPI_HANDLE, __address >> 8 * i);
-      while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE));
-      LL_SPI_ReceiveData8(SPI_HANDLE);
-      while (!LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE));
+			result = SPI_TRANSFER( __address >> 8 * i,&SPI_RESPONCE);
+			if(result == -1)
+			{
+				LL_GPIO_SetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
+				return -1;//Timeout Error
+			}
     }
   }
   
@@ -197,36 +263,53 @@ uint8_t W25Qxx_TransferSPI (uint8_t __command, int32_t __address, uint16_t __byt
     i = 3;
     while (--i)
     {		
-    LL_SPI_TransmitData8(SPI_HANDLE, 0);
-    while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE));
-    LL_SPI_ReceiveData8(SPI_HANDLE);
-    while (!LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE));
+			result = SPI_TRANSFER(0,&SPI_RESPONCE);
+			if(result == -1)
+			{
+				LL_GPIO_SetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
+				return -1;//Timeout Error
+			}
 		}
   }
   
-  if (__bytes)//>1)
+  if (__bytes>1)
   {
-    W25Qxx_TransferDMASPI(__bytes, __dir, __offset);
+    result = W25Qxx_TransferDMASPI(__bytes, __dir, __offset,__command);
+		if(result == -1)
+		{
+			LL_GPIO_SetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
+			return -1;//Timeout Error
+		}
   }
-	/*
 	else if(__bytes==1)
 	{
-		LL_SPI_TransmitData8(SPI_HANDLE, W25QXX_DUMMY_BYTE);
-		while (!LL_SPI_IsActiveFlag_TXE(SPI_HANDLE));
-		dataBuffer[1]=LL_SPI_ReceiveData8(SPI_HANDLE);
-		while (!LL_SPI_IsActiveFlag_RXNE(SPI_HANDLE));			
+		result = SPI_TRANSFER(W25QXX_DUMMY_BYTE,&SPI_RESPONCE);
+		if(result == -1)
+		{
+			LL_GPIO_SetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
+			return -1;//Timeout Error
+		}
 	}
-	*/
   
   LL_GPIO_SetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
-  return first_byte;
+  return SPI_RESPONCE;
 }
 //###################################################################################################################
 uint32_t W25qxx_ReadID(void)
 {
-	uint32_t Temp = 0;
-	W25Qxx_TransferSPI(Read_JedecID,-1,4,READ,0);
-	Temp = (dataBuffer[1] << 16) | (dataBuffer[2] << 8) | dataBuffer[3];
+	static int result,retry;
+	uint32_t Temp = 0xFFFFFFFF;
+	while(retry<SPI_RETRY)
+	{
+		retry++;	
+		result = W25Qxx_TransferSPI(Read_JedecID,-1,4,READ,0);
+		if(result != -1)
+		{		
+			Temp = (dataBuffer[0] << 16) | (dataBuffer[1] << 8) | dataBuffer[2];
+			break;
+		}
+		W25qxx_Delay(10);
+	}
 	return Temp;
 }
 //###################################################################################################################
@@ -250,21 +333,38 @@ void W25qxx_WriteDisable(void)
 //###################################################################################################################
 uint8_t W25qxx_ReadStatusRegister(uint8_t SelectStatusRegister_1_2_3)
 {
+	int result,retry;
 	if (SelectStatusRegister_1_2_3 == 1)
 	{
-		w25qxx.StatusRegister1 = W25Qxx_TransferSPI(Read_StatusRegister_1,-1,1,READ,0);
-		return w25qxx.StatusRegister1;
+		retry = 0;
+		while(retry<SPI_RETRY)
+		{		
+			retry++;
+			result = W25Qxx_TransferSPI(Read_StatusRegister_1,-1,1,READ,0);
+			if(result!=-1){return result;}
+		}
 	}
 	else if (SelectStatusRegister_1_2_3 == 2)
 	{
-		w25qxx.StatusRegister2 = W25Qxx_TransferSPI(Read_StatusRegister_2,-1,1,READ,0);
-		return w25qxx.StatusRegister2;
+		retry = 0;
+		while(retry<SPI_RETRY)
+		{		
+			retry++;
+			result = W25Qxx_TransferSPI(Read_StatusRegister_2,-1,1,READ,0);
+			if(result!=-1){return result;}
+		}
 	}
 	else
 	{
-		w25qxx.StatusRegister3 = W25Qxx_TransferSPI(Read_StatusRegister_3,-1,1,READ,0);
-		return w25qxx.StatusRegister3;
+		retry = 0;
+		while(retry<SPI_RETRY)
+		{		
+			retry++;
+			result = W25Qxx_TransferSPI(Read_StatusRegister_3,-1,1,READ,0);
+			if(result!=-1){return result;}
+		}
 	}
+	return 0xFF; //Error due to bad argument or timeout
 }
 //###################################################################################################################
 void W25qxx_WriteStatusRegister(uint8_t SelectStatusRegister_1_2_3, uint8_t Data)
@@ -291,24 +391,31 @@ void W25qxx_WaitForWriteEnd(void)
 {
 	do
 	{
-		w25qxx.StatusRegister1 =W25qxx_ReadStatusRegister(1);
-		W25qxx_Delay(1);
+		w25qxx.StatusRegister1 = W25qxx_ReadStatusRegister(1);
+		W25qxx_Delay(100);
 	} while ((w25qxx.StatusRegister1 & 0x01) == 0x01);
 }
 //###################################################################################################################
 bool W25qxx_Init(void)
 {
 	w25qxx.Lock = 1;
-	//while (HAL_GetTick() < 100)
-		W25qxx_Delay(1);
+	W25qxx_Delay(1);
+	
 	LL_GPIO_SetOutputPin(SPI_CS_PORT, SPI_CS_PIN);
 	W25qxx_Delay(100);
 
 #if (_W25QXX_DEBUG == 1)
 	printf("w25qxx Init Begin...\r\n");
 #endif
+	
+	
 	w25qxx.ManID = W25qxx_ReadID();
+	if(w25qxx.ManID == 0xFFFFFFFF) // W25Q64 No responded
+	{		
+			return false;
+	}
 
+	
 #if (_W25QXX_DEBUG == 1)
 	printf("w25qxx ID:0x%X\r\n", id);
 #endif
@@ -401,7 +508,7 @@ bool W25qxx_Init(void)
 	W25qxx_ReadUniqID();
 	W25qxx_ReadStatusRegister(1);
 	W25qxx_ReadStatusRegister(2);
-	W25qxx_ReadStatusRegister(3);
+	//W25qxx_ReadStatusRegister(3);
 #if (_W25QXX_DEBUG == 1)
 	printf("w25qxx Page Size: %d Bytes\r\n", w25qxx.PageSize);
 	printf("w25qxx Page Count: %d\r\n", w25qxx.PageCount);
