@@ -39,6 +39,9 @@ extern "C"
 #include <stdbool.h>
 #include "main.h"
 
+#define SPI_TIMEOUT 1000
+#define SPI_RETRY   10
+
 	typedef enum
 	{
 		W25Q10 = 1,
