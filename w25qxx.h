@@ -42,6 +42,9 @@ extern "C"
 #define SPI_TIMEOUT 1000
 #define SPI_RETRY   10
 
+
+
+
 	typedef enum
 	{
 		W25Q10 = 1,
@@ -84,6 +87,7 @@ extern "C"
 	bool W25qxx_Init(void);
 	
 	uint8_t Init_SPI_W25Qxx (void);
+	void W25qxx_DisableWriteProtect(void);
 	
 	void W25qxx_EraseChip(void);
 	void W25qxx_EraseSector(uint32_t SectorAddr);
@@ -99,7 +103,7 @@ extern "C"
 	bool W25qxx_IsEmptySector(uint32_t Sector_Address, uint32_t OffsetInByte, uint32_t NumByteToCheck_up_to_SectorSize);
 	bool W25qxx_IsEmptyBlock(uint32_t Block_Address, uint32_t OffsetInByte, uint32_t NumByteToCheck_up_to_BlockSize);
 
-	void W25qxx_WriteByte(uint8_t pBuffer, uint32_t Bytes_Address);
+	void W25qxx_WriteByte(uint8_t *pBuffer, uint32_t Bytes_Address);
 	void W25qxx_WritePage(uint8_t *pBuffer, uint32_t Page_Address, uint32_t OffsetInByte, uint32_t NumByteToWrite_up_to_PageSize);
 	void W25qxx_WriteSector(uint8_t *pBuffer, uint32_t Sector_Address, uint32_t OffsetInByte, uint32_t NumByteToWrite_up_to_SectorSize);
 	void W25qxx_WriteBlock(uint8_t *pBuffer, uint32_t Block_Address, uint32_t OffsetInByte, uint32_t NumByteToWrite_up_to_BlockSize);
