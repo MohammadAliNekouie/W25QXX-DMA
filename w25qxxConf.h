@@ -32,6 +32,7 @@
 #define Reset_Enable						0x66
 #define Reset_Device						0x99
 #define Global_Unlock						0x98
+#define SR_Unlock								0x50
 
 #define _BUSY_                  0x01 // Erase or write in progress
 #define _WEL_                   0x02 // Write enable Latch
@@ -49,7 +50,7 @@
 #define  SPI_CS_PIN  									LL_GPIO_PIN_12
 #define  SPI_CS_PORT 									GPIOB
 #define  SPI_HANDLE 									SPI2
-#define _W25QXX_USE_FREERTOS          0
+#define _W25QXX_USE_FREERTOS          1
 #define _W25QXX_DEBUG                 0
 
 typedef enum
